@@ -11,6 +11,7 @@
     <artifactId>guestbook</artifactId>
 
     <properties>
+        <appengine.app.version>1</appengine.app.version>
         <appengine.target.version>1.7.3</appengine.target.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
@@ -78,6 +79,14 @@
                 <version>2.3</version>
                 <configuration>
                     <archiveClasses>true</archiveClasses>
+                    <webResources>
+                        <!-- in order to interpolate version from pom into appengine-web.xml -->
+                        <resource>
+                            <directory>${basedir}/src/main/webapp/WEB-INF</directory>
+                            <filtering>true</filtering>
+                            <targetPath>WEB-INF</targetPath>
+                        </resource>
+                    </webResources>
                 </configuration>
             </plugin>
             <plugin>
