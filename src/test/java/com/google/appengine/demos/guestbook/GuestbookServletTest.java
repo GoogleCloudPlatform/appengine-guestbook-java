@@ -20,21 +20,23 @@ import static junit.framework.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.google.appengine.api.users.User;
-import com.google.appengine.api.users.UserServiceFactory;
-import com.google.appengine.tools.development.testing.LocalServiceTestHelper;
-import com.google.appengine.tools.development.testing.LocalUserServiceTestConfig;
-
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
+import com.google.appengine.api.users.User;
+import com.google.appengine.api.users.UserServiceFactory;
+import com.google.appengine.tools.development.testing.LocalServiceTestHelper;
+import com.google.appengine.tools.development.testing.LocalUserServiceTestConfig;
 
 public class GuestbookServletTest {
 
@@ -70,7 +72,10 @@ public class GuestbookServletTest {
 
     User currentUser = UserServiceFactory.getUserService().getCurrentUser();
 
-    assertEquals("Hello, " + currentUser.getNickname() + "\n", stringWriter.toString());
+    ByteArrayOutputStream os = new ByteArrayOutputStream();
+    PrintStream ps = new PrintStream(os);
+    ps.println(currentUser.getNickname());
+    assertEquals("Hello, " +  os.toString("UTF8"), stringWriter.toString());
   }
 
 }
