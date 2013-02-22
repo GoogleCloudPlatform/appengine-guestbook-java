@@ -12,7 +12,7 @@
 
     <properties>
         <appengine.app.version>1</appengine.app.version>
-        <appengine.target.version>1.7.4</appengine.target.version>
+        <appengine.target.version>1.7.5</appengine.target.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -73,6 +73,7 @@
                     <target>1.6</target>
                 </configuration>
             </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-war-plugin</artifactId>
@@ -89,6 +90,7 @@
                     </webResources>
                 </configuration>
             </plugin>
+
             <plugin>
                 <groupId>com.google.appengine</groupId>
                 <artifactId>appengine-maven-plugin</artifactId>
