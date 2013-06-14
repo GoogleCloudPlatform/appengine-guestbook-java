@@ -38,7 +38,7 @@ import javax.servlet.http.HttpServletResponse;
 
 public class GuestbookServletTest {
 
-  private GuestbookServlet guestbookServlet;
+	private GuestbookServlet guestbookServlet;
 
   private final LocalServiceTestHelper helper =
       new LocalServiceTestHelper(new LocalUserServiceTestConfig())
@@ -46,31 +46,32 @@ public class GuestbookServletTest {
           .setEnvAuthDomain("localhost")
           .setEnvEmail("test@localhost");
 
-  @Before
-  public void setupGuestBookServlet() {
-    helper.setUp();
-    guestbookServlet = new GuestbookServlet();
-  }
+	@Before
+	public void setupGuestBookServlet() {
+		helper.setUp();
+		guestbookServlet = new GuestbookServlet();
+	}
 
-  @After
-  public void tearDownHelper() {
-    helper.tearDown();
-  }
+	@After
+	public void tearDownHelper() {
+		helper.tearDown();
+	}
 
-  @Test
-  public void testDoGet() throws IOException {
-    HttpServletRequest request = mock(HttpServletRequest.class);
-    HttpServletResponse response = mock(HttpServletResponse.class);
+	@Test
+	public void testDoGet() throws IOException {
+		HttpServletRequest request = mock(HttpServletRequest.class);
+		HttpServletResponse response = mock(HttpServletResponse.class);
 
-    StringWriter stringWriter = new StringWriter();
+		StringWriter stringWriter = new StringWriter();
 
-    when(response.getWriter()).thenReturn(new PrintWriter(stringWriter));
+		when(response.getWriter()).thenReturn(new PrintWriter(stringWriter));
 
-    guestbookServlet.doGet(request, response);
+		guestbookServlet.doGet(request, response);
 
-    User currentUser = UserServiceFactory.getUserService().getCurrentUser();
+		User currentUser = UserServiceFactory.getUserService().getCurrentUser();
 
-    assertEquals("Hello, " + currentUser.getNickname() + "\n", stringWriter.toString());
-  }
+		assertEquals("Hello, " + currentUser.getNickname() + "\n", stringWriter
+				.toString().replaceAll("\\r\\n", "\n").replaceAll("\\r", "\n"));
+	}
 
 }
