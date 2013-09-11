@@ -10,9 +10,17 @@
     <groupId>com.google.appengine.demos</groupId>
     <artifactId>guestbook</artifactId>
 
+        <pluginRepositories>
+        <pluginRepository>
+            <id>google-staging</id>
+            <name>Google Staging</name>
+            <url>https://oss.sonatype.org/content/repositories/comgoogleappengine-1004/</url>
+        </pluginRepository>
+    </pluginRepositories>
+
     <properties>
         <appengine.app.version>1</appengine.app.version>
-        <appengine.target.version>1.8.1</appengine.target.version>
+        <appengine.target.version>1.8.4</appengine.target.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
