@@ -1,0 +1,31 @@
+apply plugin: 'war'
+apply plugin: 'gae'
+
+repositories {
+    mavenCentral()
+}
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath 'org.gradle.api.plugins:gradle-gae-plugin:0.9'
+    }
+}
+
+dependencies {
+    gaeSdk 'com.google.appengine:appengine-java-sdk:1.8.5'
+    compile 'com.google.appengine:appengine-api-1.0-sdk:1.8.5'
+    compile 'javax.servlet:servlet-api:2.5'
+    compile 'jstl:jstl:1.2'
+    testCompile 'com.google.appengine:appengine-testing:1.8.5'
+    testCompile 'com.google.appengine:appengine-api-stubs:1.8.5'
+    testCompile 'junit:junit:4.10'
+    testCompile 'org.mockito:mockito-all:1.9.0'
+}
+
+gae {
+    downloadSdk = true
+}
