@@ -71,10 +71,9 @@
     </dependencies>
       
     <build>
-    <outputDirectory>target/${project.artifactId}-${project.version}/WEB-INF/classes</outputDirectory> 
+        <outputDirectory>target/${project.artifactId}-${project.version}/WEB-INF/classes</outputDirectory> 
                                    
-    <plugins>
-
+        <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-war-plugin</artifactId>
