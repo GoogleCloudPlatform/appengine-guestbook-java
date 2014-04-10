@@ -2,6 +2,8 @@ hotspot.log
 *.iml
 *.ipr
 *.iws
+.gradle/
+build/
 target/
 classes/
 /var
