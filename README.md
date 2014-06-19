@@ -1,9 +1,9 @@
 App Engine Java Guestbook
-Copyright (C) 2010-2012 Google Inc.
+Copyright (C) 2010-2014 Google Inc.
 
 ## Sample guestbook for use with App Engine Java.
 
-Requires [Apache Maven](http://maven.apache.org) 3.0 or greater, and JDK 6+ in order to run.
+Requires [Apache Maven](http://maven.apache.org) 3.1 or greater, and JDK 7+ in order to run.
 
 To build, run
 
