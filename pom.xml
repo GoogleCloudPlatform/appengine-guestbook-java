@@ -12,7 +12,7 @@
 
     <properties>
         <appengine.app.version>1</appengine.app.version>
-        <appengine.target.version>1.9.15</appengine.target.version>
+        <appengine.target.version>1.9.17a</appengine.target.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -89,7 +89,6 @@
                 <version>${appengine.target.version}</version>
                 <configuration>
                    <fullScanSeconds>1</fullScanSeconds>
-                   <server>preview.appengine.google.com</server>
                 </configuration>
             </plugin>
             <plugin>
