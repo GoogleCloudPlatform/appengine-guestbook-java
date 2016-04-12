@@ -1,4 +1,12 @@
-App Engine Java Guestbook
+![status: inactive](https://img.shields.io/badge/status-inactive-red.svg)
+
+This project is no longer actively developed or maintained.
+
+For new work on this check out
+[GoogleCloudPlatform/appengine-java-guestbook-multiphase](https://github.com/GoogleCloudPlatform/appengine-java-guestbook-multiphase).
+
+# App Engine Java Guestbook
+
 Copyright (C) 2010-2014 Google Inc.
 
 ## Sample guestbook for use with App Engine Java.
