@@ -1,4 +1,3 @@
-![status: inactive](https://img.shields.io/badge/status-inactive-red.svg)
 
 # App Engine Java Guestbook
 
@@ -55,6 +54,7 @@ To switch to an Open JDK 11 in a Cloud shell session, you can use:
    # And select the usr/lib/jvm/java-11-openjdk-amd64/bin/java version.
    # Also, set the JAVA_HOME variable for Maven to pick the correct JDK:
    export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+```
 
 
 ## Development differences between App Engine Java8 and Java11 Bundled Services
@@ -82,8 +82,12 @@ This way, it should  be easy to migrate your existing GAE Java8 applications to 
 ## Maven
 ### Running locally
 
-    $ mvn appengine:run
+```shell
+    mvn appengine:run
+```
 
 ### Deploying
 
-    $ mvn clean package appengine:deploy  -Dapp.deploy.gcloudMode=beta -Ddeploy.projectId=XXXX
+```shell
+    mvn clean package appengine:deploy  -Dapp.deploy.gcloudMode=beta -Ddeploy.projectId=XXXX
+```
