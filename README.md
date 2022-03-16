@@ -89,5 +89,5 @@ This way, it should  be easy to migrate your existing GAE Java8 applications to 
 ### Deploying
 
 ```shell
-    mvn clean package appengine:deploy  -Dapp.deploy.gcloudMode=beta -Ddeploy.projectId=XXXX
+    mvn clean package appengine:deploy  -Dapp.deploy.gcloudMode=beta -Ddeploy.projectId=XXX
 ```
