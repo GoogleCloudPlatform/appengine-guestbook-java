@@ -11,11 +11,11 @@
     <artifactId>guestbook</artifactId>
 
     <prerequisites>
-        <maven>3.1.0</maven>
+        <maven>3.6.0</maven>
     </prerequisites>
 
     <properties>
-        <appengine.target.version>2.0.4</appengine.target.version>
+        <appengine.target.version>2.0.5</appengine.target.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -28,8 +28,8 @@
         </dependency>
         <dependency>
             <groupId>javax.servlet</groupId>
-            <artifactId>servlet-api</artifactId>
-            <version>2.5</version>
+            <artifactId>javax.servlet-api</artifactId>
+            <version>3.1.0</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -89,9 +89,12 @@
             <plugin>
                 <groupId>com.google.cloud.tools</groupId>
                 <artifactId>appengine-maven-plugin</artifactId>
-                <version>2.4.1</version>
+                <version>2.4.3</version>
                 <configuration>
                     <gcloudMode>beta</gcloudMode>
+                    <projectId>ludo-in-in</projectId>
+                    <version>guestbook-original</version>
+                    <promote>false</promote>
                 </configuration>
             </plugin>
             <plugin>
@@ -104,7 +107,7 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>versions-maven-plugin</artifactId>
-                <version>2.9.0</version>
+                <version>2.11.0</version>
                 <executions>
                     <execution>
                         <phase>compile</phase>
