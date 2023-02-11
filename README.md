@@ -1,7 +1,7 @@
 
 # App Engine Java Guestbook
 
-Copyright (C) 2010-2022 Google Inc.
+Copyright (C) 2010-2023 Google Inc.
 
 Original Google App Engine Java sample, created in 2009, supporting Google App Engine Standard with Java8, Java11, and Java17 using Bundled Services
 like App Engine Datastore API,and App Engine Users API.
