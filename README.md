@@ -1,9 +1,9 @@
 
 # App Engine Java Guestbook
 
-Copyright (C) 2010-2022 Google Inc.
+Copyright (C) 2010-2023 Google Inc.
 
-Original Google App Engine Java sample, created in 2009, supporting Google App Engine Standard with Java8, Java11, and Java17 using Bundled Services
+Original Google App Engine Java sample, created in 2009, supporting Google App Engine Standard with Java8, Java11, Java17, and Java21 using Bundled Services
 like App Engine Datastore API,and App Engine Users API.
 By changine the <runtime> field in the appengine-web.xml, you can select with Java version to use to execute this Java EE Web App, using Servlet and JSP.
 It demonstrates that code written back in 2009 with Google App Engine can still serve today with different JVMs.
