@@ -1,3 +1,4 @@
+package com.google.appengine.demos.guestbook;
 
 import java.io.IOException;
 import java.io.PrintWriter;
