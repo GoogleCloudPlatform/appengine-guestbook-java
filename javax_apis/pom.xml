@@ -15,7 +15,7 @@
     </prerequisites>
 
     <properties>
-        <appengine.target.version>2.0.7</appengine.target.version>
+        <appengine.target.version>2.0.29</appengine.target.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
