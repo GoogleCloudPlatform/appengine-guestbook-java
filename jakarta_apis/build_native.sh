@@ -72,11 +72,16 @@ FIRST=true
 # Dynamically discover all classes in the essential jars
 # This ensures that both com.google.apphosting.runtime and any internal Jetty classes
 # used by the adapter are properly registered for reflection.
-# We filter out .ee8. and javax.servlet classes as they are not used in EE11 and cause warnings.
+# We filter out specific classes that are not used in EE11 and cause warnings due to missing legacy dependencies.
 RUNTIME_CLASSES=""
 for JAR in "$MAIN_JAR_PATH" "$JETTY_IMPL_JAR_PATH" "$JETTY_SHARED_JAR_PATH"; do
   # Strip leading slash if present, remove .class extension, and convert / to .
-  JAR_CLASSES=$(jar tf "$JAR" | grep "\.class$" | sed 's/^\///;s/\.class$//;s/\//./g' | grep -v "\.ee8\." | grep -v "javax\.servlet\." || true)
+  JAR_CLASSES=$(jar tf "$JAR" | grep "\.class$" | sed 's/^\///;s/\.class$//;s/\//./g' | \
+    grep -v "\.ee8\." | \
+    grep -v "javax\.servlet\." | \
+    grep -v "com\.google\.apphosting\.utils\.remoteapi\.RemoteApiServlet" | \
+    grep -v "com\.google\.apphosting\.utils\.servlet\.DeferredTaskServlet" | \
+    grep -v "com\.google\.apphosting\.utils\.servlet\.JdbcMySqlConnectionCleanupFilter" || true)
   RUNTIME_CLASSES="$RUNTIME_CLASSES\n$JAR_CLASSES"
 done
 RUNTIME_CLASSES=$(echo -e "$RUNTIME_CLASSES" | sort -u)
@@ -128,10 +133,28 @@ CP="$MAIN_JAR:$JETTY_IMPL_JAR:$JETTY_SHARED_JAR:$STAGED_CLASSES:$STAGED_LIBS"
 echo "Classpath contains essential jars and staged app components."
 
 echo "=== 4. Building Native Image ==="
+# Find all XML, properties, and DTD files in the runtime jars to include them as resources
+RESOURCE_CONFIG="resource-config.json"
+echo '{"resources":{"includes":[' > "$RESOURCE_CONFIG"
+FIRST_RES=true
+for JAR in "$MAIN_JAR" "$JETTY_IMPL_JAR" "$JETTY_SHARED_JAR"; do
+  JAR_RESOURCES=$(jar tf "$JAR" | grep -E "\.(xml|properties|dtd)$" || true)
+  for RES in $JAR_RESOURCES; do
+    if [ "$FIRST_RES" = true ]; then
+      FIRST_RES=false
+    else
+      echo "," >> "$RESOURCE_CONFIG"
+    fi
+    echo "{\"pattern\":\"$(echo $RES | sed 's/^\///')\"}" >> "$RESOURCE_CONFIG"
+  done
+done
+echo ']}}' >> "$RESOURCE_CONFIG"
+
 native-image --no-fallback \
   -cp "$CP" \
   -H:Name="$IMAGE_NAME" \
   -H:ReflectionConfigurationFiles="$REFLECT_CONFIG" \
+  -H:ResourceConfigurationFiles="$RESOURCE_CONFIG" \
   --initialize-at-build-time=org.slf4j \
   -H:+ReportExceptionStackTraces \
   --enable-url-protocols=http,https \

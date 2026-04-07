@@ -58,7 +58,8 @@ After the container finishes, the binary will be at `jakarta_apis/target/appengi
    - **Full Runtime Discovery**: Automatically extracts **every class** from the three essential runtime jars. This ensures that internal App Engine and Jetty classes (like `PathSpecSet`) that are loaded via reflection are fully accessible.
    - **Legacy Filtering**: Automatically filters out classes related to `.ee8.` and `javax.servlet.` namespaces. These are legacy components not used in the Jakarta EE 11 runtime, and filtering them prevents build-time warnings and reduces the reflection map size.
    - **Full Access Registration**: All discovered classes are registered with `allDeclaredConstructors`, `allDeclaredMethods`, and `allDeclaredFields` set to `true` to prevent "missing method" errors at runtime.
-3. **Runtime Assembly**: The script unpacks the `runtime-deployment` zip and keeps only the **3 essential jars**:
+3. **Resource Discovery**: Automatically scans the essential jars for all `.xml`, `.properties`, and `.dtd` files. These are registered in `resource-config.json` to ensure the Jetty/App Engine configuration (like `catalog-ee11.xml`) is available inside the binary.
+4. **Runtime Assembly**: The script unpacks the `runtime-deployment` zip and keeps only the **3 essential jars**:
    - `runtime-main.jar`
    - `runtime-impl-jetty121.jar`
    - `runtime-shared-jetty121-ee11.jar`
