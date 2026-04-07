@@ -56,6 +56,7 @@ After the container finishes, the binary will be at `jakarta_apis/target/appengi
 2. **Deep Reflection Discovery**: `build_native.sh` uses a multi-layered discovery process to build the `reflect-config.json`:
    - **Deep XML Parsing**: Uses `perl` to extract not just main classes, but also classes hidden in `interested`, `applicable`, and `annotated` arrays within the Jetty `ContainerInitializers`.
    - **Full Runtime Discovery**: Automatically extracts **every class** from the three essential runtime jars. This ensures that internal App Engine and Jetty classes (like `PathSpecSet`) that are loaded via reflection are fully accessible.
+   - **Legacy Filtering**: Automatically filters out classes related to `.ee8.` and `javax.servlet.` namespaces. These are legacy components not used in the Jakarta EE 11 runtime, and filtering them prevents build-time warnings and reduces the reflection map size.
    - **Full Access Registration**: All discovered classes are registered with `allDeclaredConstructors`, `allDeclaredMethods`, and `allDeclaredFields` set to `true` to prevent "missing method" errors at runtime.
 3. **Runtime Assembly**: The script unpacks the `runtime-deployment` zip and keeps only the **3 essential jars**:
    - `runtime-main.jar`
@@ -63,6 +64,7 @@ After the container finishes, the binary will be at `jakarta_apis/target/appengi
    - `runtime-shared-jetty121-ee11.jar`
 4. **Native Compilation**: GraalVM's `native-image` compiles the application into a standalone binary using `com.google.apphosting.runtime.JavaRuntimeMainWithDefaults` as the entry point. It also includes several SLF4J classes in the build-time initialization list.
 5. **Verification**: The script automatically starts the binary with `GAE_PARTITION=dev` and verifies that it reaches the "JavaRuntime starting..." state without fatal errors.
+6. **Output**: The final binary is moved to the `target/` directory for consistency across build platforms.
 
 ## Troubleshooting
 

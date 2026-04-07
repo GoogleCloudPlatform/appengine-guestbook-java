@@ -72,10 +72,11 @@ FIRST=true
 # Dynamically discover all classes in the essential jars
 # This ensures that both com.google.apphosting.runtime and any internal Jetty classes
 # used by the adapter are properly registered for reflection.
+# We filter out .ee8. and javax.servlet classes as they are not used in EE11 and cause warnings.
 RUNTIME_CLASSES=""
 for JAR in "$MAIN_JAR_PATH" "$JETTY_IMPL_JAR_PATH" "$JETTY_SHARED_JAR_PATH"; do
   # Strip leading slash if present, remove .class extension, and convert / to .
-  JAR_CLASSES=$(jar tf "$JAR" | grep "\.class$" | sed 's/^\///;s/\.class$//;s/\//./g' || true)
+  JAR_CLASSES=$(jar tf "$JAR" | grep "\.class$" | sed 's/^\///;s/\.class$//;s/\//./g' | grep -v "\.ee8\." | grep -v "javax\.servlet\." || true)
   RUNTIME_CLASSES="$RUNTIME_CLASSES\n$JAR_CLASSES"
 done
 RUNTIME_CLASSES=$(echo -e "$RUNTIME_CLASSES" | sort -u)
@@ -131,14 +132,7 @@ native-image --no-fallback \
   -cp "$CP" \
   -H:Name="$IMAGE_NAME" \
   -H:ReflectionConfigurationFiles="$REFLECT_CONFIG" \
-  --initialize-at-build-time=org.slf4j.LoggerFactory \
-  --initialize-at-build-time=org.slf4j.helpers.SubstituteLoggerFactory \
-  --initialize-at-build-time=org.slf4j.helpers.NOPLoggerFactory \
-  --initialize-at-build-time=org.slf4j.helpers.Util \
-  --initialize-at-build-time=org.slf4j.helpers.SubstituteServiceProvider \
-  --initialize-at-build-time=org.slf4j.helpers.NOP_FallbackServiceProvider \
-  --initialize-at-build-time=org.slf4j.helpers.NOPMDCAdapter \
-  --initialize-at-build-time=org.slf4j.helpers.BasicMDCAdapter \
+  --initialize-at-build-time=org.slf4j \
   -H:+ReportExceptionStackTraces \
   --enable-url-protocols=http,https \
   -Djava.awt.headless=true \
