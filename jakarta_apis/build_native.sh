@@ -27,6 +27,8 @@ echo "=== 0. Locating Runtime Jars ==="
 MAIN_JAR_PATH=$(find "$RUNTIME_DIR" -name "runtime-main.jar" | head -n 1)
 JETTY_IMPL_JAR_PATH=$(find "$RUNTIME_DIR" -name "runtime-impl-jetty121.jar" | head -n 1)
 JETTY_SHARED_JAR_PATH=$(find "$RUNTIME_DIR" -name "runtime-shared-jetty121-ee11.jar" | head -n 1)
+# Also include the user-facing SDK jar from staging
+SDK_JAR_PATH=$(find "$STAGING_DIR/WEB-INF/lib" -name "appengine-api-1.0-sdk-*.jar" | head -n 1)
 
 if [ -z "$MAIN_JAR_PATH" ] || [ -z "$JETTY_IMPL_JAR_PATH" ] || [ -z "$JETTY_SHARED_JAR_PATH" ]; then
     echo "Error: Could not find all 3 essential jars in $RUNTIME_DIR"
@@ -74,7 +76,8 @@ FIRST=true
 # used by the adapter are properly registered for reflection.
 # We filter out specific classes that are not used in EE11 and cause warnings due to missing legacy dependencies.
 RUNTIME_CLASSES=""
-for JAR in "$MAIN_JAR_PATH" "$JETTY_IMPL_JAR_PATH" "$JETTY_SHARED_JAR_PATH"; do
+for JAR in "$MAIN_JAR_PATH" "$JETTY_IMPL_JAR_PATH" "$JETTY_SHARED_JAR_PATH" "$SDK_JAR_PATH"; do
+  [ -z "$JAR" ] && continue
   # Strip leading slash if present, remove .class extension, and convert / to .
   JAR_CLASSES=$(jar tf "$JAR" | grep "\.class$" | sed 's/^\///;s/\.class$//;s/\//./g' | \
     grep -v "\.ee8\." | \
@@ -133,19 +136,24 @@ CP="$MAIN_JAR:$JETTY_IMPL_JAR:$JETTY_SHARED_JAR:$STAGED_CLASSES:$STAGED_LIBS"
 echo "Classpath contains essential jars and staged app components."
 
 echo "=== 4. Building Native Image ==="
-# Find all XML, properties, and DTD files in the runtime jars to include them as resources
+# Find all XML, properties, DTD, XSD and TXT files in the jars to include them as resources
 RESOURCE_CONFIG="resource-config.json"
 echo '{"resources":{"includes":[' > "$RESOURCE_CONFIG"
 FIRST_RES=true
-for JAR in "$MAIN_JAR" "$JETTY_IMPL_JAR" "$JETTY_SHARED_JAR"; do
-  JAR_RESOURCES=$(jar tf "$JAR" | grep -E "\.(xml|properties|dtd)$" || true)
+for JAR in "$MAIN_JAR_PATH" "$JETTY_IMPL_JAR_PATH" "$JETTY_SHARED_JAR_PATH" "$SDK_JAR_PATH"; do
+  [ -z "$JAR" ] && continue
+  JAR_RESOURCES=$(jar tf "$JAR" | grep -E "\.(xml|properties|dtd|xsd|txt)$" || true)
   for RES in $JAR_RESOURCES; do
+    [ -z "$RES" ] && continue
+    CLEAN_RES=$(echo "$RES" | sed 's/^\///')
     if [ "$FIRST_RES" = true ]; then
       FIRST_RES=false
     else
       echo "," >> "$RESOURCE_CONFIG"
     fi
-    echo "{\"pattern\":\"$(echo $RES | sed 's/^\///')\"}" >> "$RESOURCE_CONFIG"
+    # Register both with and without leading slash to be safe
+    echo "{\"pattern\":\"$CLEAN_RES\"}" >> "$RESOURCE_CONFIG"
+    echo ",{\"pattern\":\"/$CLEAN_RES\"}" >> "$RESOURCE_CONFIG"
   done
 done
 echo ']}}' >> "$RESOURCE_CONFIG"
@@ -156,14 +164,17 @@ native-image --no-fallback \
   -H:ReflectionConfigurationFiles="$REFLECT_CONFIG" \
   -H:ResourceConfigurationFiles="$RESOURCE_CONFIG" \
   --initialize-at-build-time=org.slf4j \
+  --initialize-at-build-time=org.eclipse.jetty \
+  --gc=G1 \
   -H:+ReportExceptionStackTraces \
   --enable-url-protocols=http,https \
   -Djava.awt.headless=true \
   com.google.apphosting.runtime.JavaRuntimeMainWithDefaults
 
 echo "=== 5. Testing Native Binary ==="
-export GAE_PARTITION=dev
-./"$IMAGE_NAME" --fixed_application_path="$STAGING_DIR" "$RUNTIME_DIR" > runtime.log 2>&1 &
+# We run the binary with GAE_PARTITION=dev only for this local verification step.
+# In production, this variable will be set correctly by the App Engine environment.
+GAE_PARTITION=dev ./"$IMAGE_NAME" --fixed_application_path="$STAGING_DIR" "$RUNTIME_DIR" > runtime.log 2>&1 &
 RUN_PID=$!
 
 echo "Waiting for 'INFO: JavaRuntime starting...' in logs..."

@@ -55,17 +55,30 @@ After the container finishes, the binary will be at `jakarta_apis/target/appengi
 1. **Staging**: The `appengine:stage` command generates `target/appengine-staging/WEB-INF/quickstart-web.xml`. This file contains a pre-scanned list of all servlets, initializers, and JSP classes.
 2. **Deep Reflection Discovery**: `build_native.sh` uses a multi-layered discovery process to build the `reflect-config.json`:
    - **Deep XML Parsing**: Uses `perl` to extract not just main classes, but also classes hidden in `interested`, `applicable`, and `annotated` arrays within the Jetty `ContainerInitializers`.
-   - **Full Runtime Discovery**: Automatically extracts **every class** from the three essential runtime jars. This ensures that internal App Engine and Jetty classes (like `PathSpecSet`) that are loaded via reflection are fully accessible.
-   - **Legacy Filtering**: Automatically filters out classes related to `.ee8.` and `javax.servlet.` namespaces. These are legacy components not used in the Jakarta EE 11 runtime, and filtering them prevents build-time warnings and reduces the reflection map size.
-   - **Full Access Registration**: All discovered classes are registered with `allDeclaredConstructors`, `allDeclaredMethods`, and `allDeclaredFields` set to `true` to prevent "missing method" errors at runtime.
-3. **Resource Discovery**: Automatically scans the essential jars for all `.xml`, `.properties`, and `.dtd` files. These are registered in `resource-config.json` to ensure the Jetty/App Engine configuration (like `catalog-ee11.xml`) is available inside the binary.
+   - **Full Runtime & SDK Discovery**: Automatically extracts **every class** from the three essential runtime jars AND the user-facing `appengine-api-1.0-sdk` jar. This ensures that internal App Engine classes, Jetty classes (like `PathSpecSet`), and public App Engine APIs are fully accessible via reflection.
+   - **Legacy Filtering**: Automatically filters out classes related to `.ee8.` and `javax.servlet.` namespaces, as well as specific legacy utility classes (`RemoteApiServlet`, `DeferredTaskServlet`, etc.).
+   - **Full Access Registration**: All discovered classes are registered with `allDeclaredConstructors`, `allDeclaredMethods`, and `allDeclaredFields` set to `true`.
+3. **Resource Discovery**: Automatically scans the runtime jars and the SDK jar for all `.xml`, `.properties`, and `.dtd` files. These are registered in `resource-config.json` to ensure configuration like `catalog-ee11.xml` is available inside the binary.
 4. **Runtime Assembly**: The script unpacks the `runtime-deployment` zip and keeps only the **3 essential jars**:
    - `runtime-main.jar`
    - `runtime-impl-jetty121.jar`
    - `runtime-shared-jetty121-ee11.jar`
-4. **Native Compilation**: GraalVM's `native-image` compiles the application into a standalone binary using `com.google.apphosting.runtime.JavaRuntimeMainWithDefaults` as the entry point. It also includes several SLF4J classes in the build-time initialization list.
-5. **Verification**: The script automatically starts the binary with `GAE_PARTITION=dev` and verifies that it reaches the "JavaRuntime starting..." state without fatal errors.
-6. **Output**: The final binary is moved to the `target/` directory for consistency across build platforms.
+5. **Native Compilation**: GraalVM's `native-image` compiles the application into a standalone binary using `com.google.apphosting.runtime.JavaRuntimeMainWithDefaults` as the entry point. It also includes the entire **`org.slf4j` package** in the build-time initialization list to ensure logging works correctly.
+6. **Garbage Collection**: The binary is built with **G1GC** (`--gc=G1`) to align with standard App Engine Java runtime behavior, providing better latency and throughput for typical web workloads.
+7. **Verification**: The script automatically starts the binary with `GAE_PARTITION=dev` and verifies that it reaches the "JavaRuntime starting..." state without fatal errors.
+8. **Output**: The final binary is moved to the `target/` directory for consistency across build platforms.
+
+## Production Deployment
+
+The resulting binary (`appengine-native-image`) is a standalone Linux executable. When running in a production environment (such as Google App Engine or a custom container):
+
+- **Environment Variables**: The runtime environment will provide the necessary variables like `PORT`, `GAE_INSTANCE`, and `GAE_PARTITION`. 
+- **Heap Management**: The native binary respects standard JVM heap flags. You can pass `-Xmx` and `-Xms` at runtime. By default, App Engine Java runtimes target a heap size of approximately 80% of available instance memory.
+- **Local Verification**: The `GAE_PARTITION=dev` flag is **only** used during the build's verification step to enable local mode (stubbing out production API calls). Do **not** set this in production.
+- **Execution**: To run the binary manually in a production-like environment:
+  ```bash
+  ./appengine-native-image -Xmx512m --fixed_application_path=/path/to/staged/app /path/to/runtime
+  ```
 
 ## Troubleshooting
 
