@@ -1,0 +1,53 @@
+name: GraalVM JDK 25 Native Image (Jakarta APIS)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up GraalVM JDK 25
+      uses: graalvm/setup-graalvm@v1
+      with:
+        java-version: '25'
+        distribution: 'graalvm'
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        native-image-job-reports: 'true'
+
+    - name: Cache Maven packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+
+    - name: Build with Maven
+      run: |
+        cd jakarta_apis
+        mvn -B clean package -DskipTests
+
+    - name: Stage App Engine
+      run: |
+        cd jakarta_apis
+        mvn -B appengine:stage
+
+    - name: Unpack Runtime
+      run: |
+        cd jakarta_apis
+        mvn -B dependency:unpack-dependencies -DincludeArtifactIds=runtime-deployment -DoutputDirectory=target/runtime
+
+    - name: Build and Test Native Image
+      run: |
+        cd jakarta_apis
+        chmod +x build_native.sh
+        ./build_native.sh
+
+    - name: Upload Native Binary
+      uses: actions/upload-artifact@v4
+      with:
+        name: appengine-native-binary
+        path: jakarta_apis/appengine-native-image

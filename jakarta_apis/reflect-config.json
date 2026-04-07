@@ -1,0 +1,89 @@
+[
+  {
+    "name": "com.google.appengine.demos.guestbook.GuestbookServlet",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true,
+    "allDeclaredClasses": true
+  }
+,
+  {
+    "name": "com.google.appengine.demos.guestbook.ServletViewer",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true,
+    "allDeclaredClasses": true
+  }
+,
+  {
+    "name": "com.google.appengine.demos.guestbook.SignGuestbookServlet",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true,
+    "allDeclaredClasses": true
+  }
+,
+  {
+    "name": "org.apache.jsp.guestbook_jsp",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true,
+    "allDeclaredClasses": true
+  }
+,
+  {
+    "name": "org.eclipse.jetty.ee11.apache.jsp.JettyJasperInitializer",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true,
+    "allDeclaredClasses": true
+  }
+,
+  {
+    "name": "org.glassfish.wasp.runtime.TldScanner",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true,
+    "allDeclaredClasses": true
+  }
+,
+  {
+    "name": "com.google.apphosting.runtime.JavaRuntimeFactory",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true,
+    "allDeclaredClasses": true
+  }
+,
+  {
+    "name": "com.google.apphosting.runtime.jetty.JettyServletEngineAdapter",
+    "allDeclaredConstructors": true,
+    "allPublicConstructors": true,
+    "allDeclaredMethods": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true,
+    "allPublicFields": true,
+    "allDeclaredClasses": true
+  }
+]

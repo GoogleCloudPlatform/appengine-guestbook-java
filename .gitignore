@@ -19,3 +19,4 @@ temp-testng-customsuite.xml
 test-output
 .externalToolBuilders
 *~
+/jakarta_apis/appengine-native-image
