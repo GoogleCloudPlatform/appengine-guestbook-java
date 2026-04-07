@@ -47,7 +47,7 @@ echo "[" > "$REFLECT_CONFIG"
 FIRST=true
 
 # Add core runtime factory which is loaded via reflection
-ALL_CLASSES_WITH_RUNTIME="$ALL_CLASSES com.google.apphosting.runtime.JavaRuntimeFactory com.google.apphosting.runtime.jetty.JettyServletEngineAdapter"
+ALL_CLASSES_WITH_RUNTIME="$ALL_CLASSES com.google.apphosting.runtime.JavaRuntimeFactory com.google.apphosting.runtime.jetty.JettyServletEngineAdapter com.google.apphosting.runtime.jetty.ee11.EE11AppVersionHandlerFactory"
 
 for CLASS in $ALL_CLASSES_WITH_RUNTIME; do
   if [ "$FIRST" = true ]; then
