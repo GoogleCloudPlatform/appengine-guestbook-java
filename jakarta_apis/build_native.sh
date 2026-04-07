@@ -218,3 +218,22 @@ echo "Native binary test passed!"
 # Move to target for consistency
 mv "$IMAGE_NAME" target/
 echo "Final binary is available at: target/$IMAGE_NAME"
+
+# Update app.yaml in staging directory for deployment
+APP_YAML="$STAGING_DIR/app.yaml"
+if [ -f "$APP_YAML" ]; then
+    echo "=== 6. Updating $APP_YAML with native entrypoint ==="
+    # Copy binary to staging dir so it can be deployed
+    cp "target/$IMAGE_NAME" "$STAGING_DIR/"
+    
+    # Replace or add entrypoint
+    # Note: We use the production trusted_host here
+    ENTRYPOINT="./$IMAGE_NAME --jetty_http_port=8080 --trusted_host=appengine.googleapis.internal:10001 --fixed_application_path=."
+    
+    if grep -q "entrypoint:" "$APP_YAML"; then
+        sed -i.bak "s|entrypoint:.*|entrypoint: $ENTRYPOINT|" "$APP_YAML"
+    else
+        echo "entrypoint: $ENTRYPOINT" >> "$APP_YAML"
+    fi
+    echo "app.yaml updated successfully."
+fi

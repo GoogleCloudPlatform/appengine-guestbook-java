@@ -50,6 +50,19 @@ If you are on macOS or Windows and want to produce a **Linux-native binary**, yo
 
 After the container finishes, the binary will be at `jakarta_apis/target/appengine-native-image`.
 
+## Google Cloud Build & Deploy
+
+You can automate the entire build and deployment process using Google Cloud Build.
+
+1.  **Configure**: The `jakarta_apis/cloudbuild.yaml` file is pre-configured to install GraalVM JDK 25, build the native binary, and deploy it to App Engine.
+2.  **Submit the Build**:
+    ```bash
+    cd jakarta_apis
+    gcloud builds submit . --config cloudbuild.yaml
+    ```
+
+This will produce the Linux binary and deploy it with the correct native entrypoint automatically.
+
 ## How it Works
 
 1. **Staging**: The `appengine:stage` command generates `target/appengine-staging/WEB-INF/quickstart-web.xml`. This file contains a pre-scanned list of all servlets, initializers, and JSP classes.
