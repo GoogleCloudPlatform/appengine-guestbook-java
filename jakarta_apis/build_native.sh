@@ -46,10 +46,20 @@ echo "=== 2. Generating $REFLECT_CONFIG ==="
 echo "[" > "$REFLECT_CONFIG"
 FIRST=true
 
-# Add core runtime factory which is loaded via reflection
-ALL_CLASSES_WITH_RUNTIME="$ALL_CLASSES com.google.apphosting.runtime.JavaRuntimeFactory com.google.apphosting.runtime.jetty.JettyServletEngineAdapter com.google.apphosting.runtime.jetty.ee11.EE11AppVersionHandlerFactory"
+# Dynamically discover all classes in the essential jars
+# This ensures that both com.google.apphosting.runtime and any internal Jetty classes
+# used by the adapter are properly registered for reflection.
+RUNTIME_CLASSES=""
+for JAR in "$MAIN_JAR" "$JETTY_IMPL_JAR" "$JETTY_SHARED_JAR"; do
+  JAR_CLASSES=$(jar tf "$JAR" | grep "\.class$" | sed 's/\.class$//;s/\//./g' || true)
+  RUNTIME_CLASSES="$RUNTIME_CLASSES\n$JAR_CLASSES"
+done
+RUNTIME_CLASSES=$(echo -e "$RUNTIME_CLASSES" | sort -u)
 
-for CLASS in $ALL_CLASSES_WITH_RUNTIME; do
+# Combine discovered classes with those from quickstart-web.xml
+ALL_CLASSES_TO_REGISTER=$(echo -e "$ALL_CLASSES\n$RUNTIME_CLASSES" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^$' | sort -u)
+
+for CLASS in $ALL_CLASSES_TO_REGISTER; do
   if [ "$FIRST" = true ]; then
     FIRST=false
   else
