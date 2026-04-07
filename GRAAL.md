@@ -53,7 +53,10 @@ After the container finishes, the binary will be at `jakarta_apis/target/appengi
 ## How it Works
 
 1. **Staging**: The `appengine:stage` command generates `target/appengine-staging/WEB-INF/quickstart-web.xml`. This file contains a pre-scanned list of all servlets, initializers, and JSP classes.
-2. **Reflection Configuration**: `build_native.sh` uses `perl` to parse `quickstart-web.xml` and dynamically generate `reflect-config.json`. This ensures all discovered web classes (and essential runtime factories like `JavaRuntimeFactory` and `JettyServletEngineAdapter`) have full reflective access.
+2. **Deep Reflection Discovery**: `build_native.sh` uses a multi-layered discovery process to build the `reflect-config.json`:
+   - **Deep XML Parsing**: Uses `perl` to extract not just main classes, but also classes hidden in `interested`, `applicable`, and `annotated` arrays within the Jetty `ContainerInitializers`.
+   - **Full Runtime Discovery**: Automatically extracts **every class** from the three essential runtime jars. This ensures that internal App Engine and Jetty classes (like `PathSpecSet`) that are loaded via reflection are fully accessible.
+   - **Full Access Registration**: All discovered classes are registered with `allDeclaredConstructors`, `allDeclaredMethods`, and `allDeclaredFields` set to `true` to prevent "missing method" errors at runtime.
 3. **Runtime Assembly**: The script unpacks the `runtime-deployment` zip and keeps only the **3 essential jars**:
    - `runtime-main.jar`
    - `runtime-impl-jetty121.jar`

@@ -30,11 +30,23 @@ fi
 
 # Extract from <servlet-class>
 # Using perl because macOS grep doesn't support -P
-SERVLET_CLASSES=$(perl -ne 'print "$1\n" while /<servlet-class[^>]*>(.*?)<\/servlet-class>/g' "$QUICKSTART_WEB_XML" || true)
+SERVLET_CLASSES=$(perl -ne 'print "$1\n" while /<servlet-class[^>]*>(.*?)<\/servlet-class>/g' "$QUICKSTART_WEB_XML" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' || true)
 
 # Extract from org.eclipse.jetty.containerInitializers context-param
-# Format: "ContainerInitializer{class.name,interested=[],applicable=[],annotated=[]}"
-INIT_CLASSES=$(perl -ne 'print "$1\n" while /ContainerInitializer\{(.*?)[,}]/g' "$QUICKSTART_WEB_XML" || true)
+# This captures the main class AND any classes inside the interested=[], applicable=[], etc. arrays
+INIT_CLASSES=$(perl -ne 'while (/ContainerInitializer\{(.*?)\}/g) { 
+    $inner = $1; 
+    # Extract the main class (first element)
+    if ($inner =~ /^([^,]+)/) { print "$1\n"; }
+    # Extract any classes inside brackets [class1,class2]
+    while ($inner =~ /\[(.*?)\]/g) {
+        @classes = split(/,/, $1);
+        foreach $c (@classes) {
+            $c =~ s/^\s+|\s+$//g;
+            print "$c\n" if $c;
+        }
+    }
+}' "$QUICKSTART_WEB_XML" | sort -u || true)
 
 # Combine, clean up, and remove duplicates
 ALL_CLASSES=$(echo -e "$SERVLET_CLASSES\n$INIT_CLASSES" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^$' | sort -u)
@@ -51,7 +63,8 @@ FIRST=true
 # used by the adapter are properly registered for reflection.
 RUNTIME_CLASSES=""
 for JAR in "$MAIN_JAR" "$JETTY_IMPL_JAR" "$JETTY_SHARED_JAR"; do
-  JAR_CLASSES=$(jar tf "$JAR" | grep "\.class$" | sed 's/\.class$//;s/\//./g' || true)
+  # Strip leading slash if present, remove .class extension, and convert / to .
+  JAR_CLASSES=$(jar tf "$JAR" | grep "\.class$" | sed 's/^\///;s/\.class$//;s/\//./g' || true)
   RUNTIME_CLASSES="$RUNTIME_CLASSES\n$JAR_CLASSES"
 done
 RUNTIME_CLASSES=$(echo -e "$RUNTIME_CLASSES" | sort -u)
