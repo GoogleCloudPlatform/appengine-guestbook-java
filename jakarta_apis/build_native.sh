@@ -22,6 +22,17 @@ fi
 echo "Using native-image from: $(command -v native-image)"
 native-image --version
 
+# Discover jars early as they are needed for reflection config generation
+echo "=== 0. Locating Runtime Jars ==="
+MAIN_JAR_PATH=$(find "$RUNTIME_DIR" -name "runtime-main.jar" | head -n 1)
+JETTY_IMPL_JAR_PATH=$(find "$RUNTIME_DIR" -name "runtime-impl-jetty121.jar" | head -n 1)
+JETTY_SHARED_JAR_PATH=$(find "$RUNTIME_DIR" -name "runtime-shared-jetty121-ee11.jar" | head -n 1)
+
+if [ -z "$MAIN_JAR_PATH" ] || [ -z "$JETTY_IMPL_JAR_PATH" ] || [ -z "$JETTY_SHARED_JAR_PATH" ]; then
+    echo "Error: Could not find all 3 essential jars in $RUNTIME_DIR"
+    exit 1
+fi
+
 echo "=== 1. Parsing $QUICKSTART_WEB_XML for classes ==="
 if [ ! -f "$QUICKSTART_WEB_XML" ]; then
     echo "Error: $QUICKSTART_WEB_XML not found. Did you run 'mvn appengine:stage'?"
@@ -62,7 +73,7 @@ FIRST=true
 # This ensures that both com.google.apphosting.runtime and any internal Jetty classes
 # used by the adapter are properly registered for reflection.
 RUNTIME_CLASSES=""
-for JAR in "$MAIN_JAR" "$JETTY_IMPL_JAR" "$JETTY_SHARED_JAR"; do
+for JAR in "$MAIN_JAR_PATH" "$JETTY_IMPL_JAR_PATH" "$JETTY_SHARED_JAR_PATH"; do
   # Strip leading slash if present, remove .class extension, and convert / to .
   JAR_CLASSES=$(jar tf "$JAR" | grep "\.class$" | sed 's/^\///;s/\.class$//;s/\//./g' || true)
   RUNTIME_CLASSES="$RUNTIME_CLASSES\n$JAR_CLASSES"
@@ -94,16 +105,6 @@ done
 echo "]" >> "$REFLECT_CONFIG"
 
 echo "=== 3. Cleaning Runtime and Constructing Classpath ==="
-# Find critical jars
-MAIN_JAR_PATH=$(find "$RUNTIME_DIR" -name "runtime-main.jar" | head -n 1)
-JETTY_IMPL_JAR_PATH=$(find "$RUNTIME_DIR" -name "runtime-impl-jetty121.jar" | head -n 1)
-JETTY_SHARED_JAR_PATH=$(find "$RUNTIME_DIR" -name "runtime-shared-jetty121-ee11.jar" | head -n 1)
-
-if [ -z "$MAIN_JAR_PATH" ] || [ -z "$JETTY_IMPL_JAR_PATH" ] || [ -z "$JETTY_SHARED_JAR_PATH" ]; then
-    echo "Error: Could not find all 3 essential jars in $RUNTIME_DIR"
-    exit 1
-fi
-
 # Create a temporary directory to hold the keepers
 TEMP_RUNTIME="target/runtime_temp"
 mkdir -p "$TEMP_RUNTIME"
