@@ -165,6 +165,9 @@ native-image --no-fallback \
   -H:ResourceConfigurationFiles="$RESOURCE_CONFIG" \
   --initialize-at-build-time=org.slf4j \
   --initialize-at-build-time=org.eclipse.jetty \
+  --initialize-at-build-time=com.google.apphosting \
+  --initialize-at-build-time=com.google.appengine \
+  --initialize-at-build-time=org.glassfish \
   --gc=G1 \
   -H:+ReportExceptionStackTraces \
   --enable-url-protocols=http,https \
