@@ -50,4 +50,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: appengine-native-binary
-        path: jakarta_apis/appengine-native-image
+        path: jakarta_apis/target/appengine-native-image
