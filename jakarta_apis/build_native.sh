@@ -168,6 +168,7 @@ native-image --no-fallback \
   --initialize-at-build-time=com.google.apphosting \
   --initialize-at-build-time=com.google.appengine \
   --initialize-at-build-time=org.glassfish \
+  --initialize-at-build-time=com.google.common \
   --initialize-at-run-time=com.google.apphosting.runtime.RequestManager\$ThreadStop0Holder \
   --initialize-at-run-time=com.google.appengine.repackaged \
   --initialize-at-run-time=com.google.api \
