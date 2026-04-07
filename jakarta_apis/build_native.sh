@@ -237,3 +237,23 @@ if [ -f "$APP_YAML" ]; then
     fi
     echo "app.yaml updated successfully."
 fi
+
+echo "=== 7. Parsing deployment parameters from pom.xml ==="
+# Extract projectId, version, and promote from pom.xml
+PROJECT_ID=$(perl -ne 'print $1 if /<projectId>(.*?)<\/projectId>/' pom.xml || echo "")
+VERSION_ID=$(perl -ne 'print $1 if /<version>(.*?)<\/version>/' pom.xml | head -n 2 | tail -n 1 || echo "")
+PROMOTE=$(perl -ne 'print $1 if /<promote>(.*?)<\/promote>/' pom.xml || echo "false")
+
+# Map promote boolean to gcloud flags
+PROMOTE_FLAG="--no-promote"
+if [ "$PROMOTE" = "true" ]; then
+    PROMOTE_FLAG="--promote"
+fi
+
+# Generate a deployment script in the staging directory
+DEPLOY_SCRIPT="$STAGING_DIR/deploy.sh"
+echo "#!/bin/bash" > "$DEPLOY_SCRIPT"
+echo "gcloud app deploy . --project=$PROJECT_ID --version=$VERSION_ID $PROMOTE_FLAG --quiet" >> "$DEPLOY_SCRIPT"
+chmod +x "$DEPLOY_SCRIPT"
+
+echo "Generated $DEPLOY_SCRIPT with project=$PROJECT_ID, version=$VERSION_ID, promote=$PROMOTE"

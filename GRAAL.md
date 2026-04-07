@@ -11,8 +11,10 @@ This project supports building a GraalVM Native Image for the Jakarta EE 11 App 
 ## Project Structure
 
 - `jakarta_apis/pom.xml`: Contains the `native` profile which automates the build and test process.
-- `jakarta_apis/build_native.sh`: The core script for generating reflection config, building the image, and verifying it.
-- `.github/workflows/graalvm-jdk25.yml`: Automated CI/CD pipeline for producing the Linux binary.
+- `jakarta_apis/build_native.sh`: The core script for generating reflection/resource config, building the image, and preparing deployment.
+- `jakarta_apis/cloudbuild.yaml`: Automated build and deployment for Google Cloud Build.
+- `jakarta_apis/Dockerfile`: Build environment for local Docker-based Linux builds.
+- `.github/workflows/graalvm-jdk25.yml`: Automated CI pipeline for producing the Linux binary.
 
 ## Local Build & Test
 
@@ -52,43 +54,50 @@ After the container finishes, the binary will be at `jakarta_apis/target/appengi
 
 ## Google Cloud Build & Deploy
 
-You can automate the entire build and deployment process using Google Cloud Build.
+You can automate the entire build and deployment process using Google Cloud Build. This process is **dynamic** and uses your `pom.xml` as the single source of truth for deployment parameters (`projectId`, `version`, `promote`).
 
-1.  **Configure**: The `jakarta_apis/cloudbuild.yaml` file is pre-configured to install GraalVM JDK 25, build the native binary, and deploy it to App Engine.
-2.  **Submit the Build**:
+1.  **Prerequisites**:
+    -   Install the [Google Cloud SDK](https://cloud.google.com/sdk/docs/install).
+    -   Ensure the Cloud Build and App Engine Admin APIs are enabled in your project.
+    -   Authenticate and set your project:
+        ```bash
+        gcloud auth login
+        gcloud config set project [YOUR_PROJECT_ID]
+        ```
+
+2.  **Submit the Build**: From the **project root**, run:
     ```bash
-    cd jakarta_apis
-    gcloud builds submit . --config cloudbuild.yaml
+    gcloud builds submit jakarta_apis --config jakarta_apis/cloudbuild.yaml
     ```
 
-This will produce the Linux binary and deploy it with the correct native entrypoint automatically.
+Cloud Build will automatically:
+-   Spin up a high-CPU build worker (40-minute timeout).
+-   Parse your `projectId`, `version`, and `promote` settings from `pom.xml`.
+-   Build the Linux-native binary using GraalVM JDK 25.
+-   Inject the native entrypoint into `app.yaml`.
+-   Deploy the resulting binary to App Engine using the extracted parameters.
 
 ## How it Works
 
 1. **Staging**: The `appengine:stage` command generates `target/appengine-staging/WEB-INF/quickstart-web.xml`. This file contains a pre-scanned list of all servlets, initializers, and JSP classes.
 2. **Deep Reflection Discovery**: `build_native.sh` uses a multi-layered discovery process to build the `reflect-config.json`:
    - **Deep XML Parsing**: Uses `perl` to extract not just main classes, but also classes hidden in `interested`, `applicable`, and `annotated` arrays within the Jetty `ContainerInitializers`.
-   - **Full Runtime & SDK Discovery**: Automatically extracts **every class** from the three essential runtime jars AND the user-facing `appengine-api-1.0-sdk` jar. This ensures that internal App Engine classes, Jetty classes (like `PathSpecSet`), and public App Engine APIs are fully accessible via reflection.
-   - **Legacy Filtering**: Automatically filters out classes related to `.ee8.` and `javax.servlet.` namespaces, as well as specific legacy utility classes (`RemoteApiServlet`, `DeferredTaskServlet`, etc.).
+   - **Full Runtime & SDK Discovery**: Automatically extracts **every class** from the three essential runtime jars AND the user-facing `appengine-api-1.0-sdk` jar.
+   - **Legacy Filtering**: Automatically filters out classes related to `.ee8.` and `javax.servlet.` namespaces, as well as specific legacy utility classes.
    - **Full Access Registration**: All discovered classes are registered with `allDeclaredConstructors`, `allDeclaredMethods`, and `allDeclaredFields` set to `true`.
-3. **Resource Discovery**: Automatically scans the runtime jars and the SDK jar for all `.xml`, `.properties`, and `.dtd` files. These are registered in `resource-config.json` to ensure configuration like `catalog-ee11.xml` is available inside the binary.
-4. **Runtime Assembly**: The script unpacks the `runtime-deployment` zip and keeps only the **3 essential jars**:
-   - `runtime-main.jar`
-   - `runtime-impl-jetty121.jar`
-   - `runtime-shared-jetty121-ee11.jar`
-5. **Native Compilation**: GraalVM's `native-image` compiles the application into a standalone binary using `com.google.apphosting.runtime.JavaRuntimeMainWithDefaults` as the entry point. It also includes the entire **`org.slf4j` package** in the build-time initialization list to ensure logging works correctly.
-6. **Garbage Collection**: The binary is built with **G1GC** (`--gc=G1`) to align with standard App Engine Java runtime behavior, providing better latency and throughput for typical web workloads.
-7. **Verification**: The script automatically starts the binary with `GAE_PARTITION=dev` and verifies that it reaches the "JavaRuntime starting..." state without fatal errors.
-8. **Output**: The final binary is moved to the `target/` directory for consistency across build platforms.
+3. **Resource Discovery**: Automatically scans the jars for all `.xml`, `.properties`, `.dtd`, `.xsd`, and `.txt` files. These are registered in `resource-config.json` to ensure configuration like `catalog-ee11.xml` is available inside the binary.
+4. **Runtime Assembly**: The script unpacks the `runtime-deployment` zip and keeps only the **3 essential jars**: `runtime-main.jar`, `runtime-impl-jetty121.jar`, and `runtime-shared-jetty121-ee11.jar`.
+5. **Native Compilation**: GraalVM's `native-image` compiles the application using `com.google.apphosting.runtime.JavaRuntimeMainWithDefaults` as the entry point. It includes **G1GC** (`--gc=G1`) and broad build-time initialization for `org.slf4j`, `org.eclipse.jetty`, and App Engine packages.
+6. **Verification**: The script automatically starts the binary with `GAE_PARTITION=dev` and verifies that it reaches the "JavaRuntime starting..." state without fatal errors.
+7. **Deployment Preparation**: The script parses `pom.xml` to extract deployment settings and generates a `target/appengine-staging/deploy.sh` script. It also injects the native entrypoint into the staged `app.yaml`.
 
 ## Production Deployment
 
-The resulting binary (`appengine-native-image`) is a standalone Linux executable. When running in a production environment (such as Google App Engine or a custom container):
+The resulting binary (`appengine-native-image`) is a standalone Linux executable. 
 
-- **Environment Variables**: The runtime environment will provide the necessary variables like `PORT`, `GAE_INSTANCE`, and `GAE_PARTITION`. 
-- **Heap Management**: The native binary respects standard JVM heap flags. You can pass `-Xmx` and `-Xms` at runtime. By default, App Engine Java runtimes target a heap size of approximately 80% of available instance memory.
-- **Local Verification**: The `GAE_PARTITION=dev` flag is **only** used during the build's verification step to enable local mode (stubbing out production API calls). Do **not** set this in production.
-- **Execution**: To run the binary manually in a production-like environment:
+- **Environment Variables**: The runtime environment provides variables like `PORT` and `GAE_PARTITION`. 
+- **Heap Management**: The binary respects standard flags like `-Xmx`. By default, App Engine Java runtimes target a heap size of ~80% of available instance memory.
+- **Execution**: To run manually in a production-like environment:
   ```bash
   ./appengine-native-image -Xmx512m --fixed_application_path=/path/to/staged/app /path/to/runtime
   ```
@@ -96,55 +105,9 @@ The resulting binary (`appengine-native-image`) is a standalone Linux executable
 ## Troubleshooting
 
 - **Grep on macOS**: The script uses `perl` for pattern extraction to avoid incompatibilities with the default macOS `grep`.
-- **Cloud SDK hang**: The `appengine-maven-plugin` is configured to use a local `cloudSdkHome` and has `downloadCloudSdk` set to `false` to prevent stalls during staging.
+- **Cloud SDK hang**: The `appengine-maven-plugin` is configured to use a local `cloudSdkHome` and has `downloadCloudSdk` set to `false`.
 - **Classpath Errors**: If `ClassNotFoundException` occurs, ensure the class is added to the `ALL_CLASSES_WITH_RUNTIME` list in `build_native.sh`.
 
-## GitHub Actions
-
-The CI pipeline automatically builds and tests the native image on every push to the `main` branch. The resulting Linux binary is uploaded as a workflow artifact.
 ## Application-Specific Customization
 
-The App Engine runtime itself is now fully configured for GraalVM. Any remaining tasks are **web application specific**, not App Engine specific. This means that if your application uses additional libraries (like Hibernate, Jackson, or custom reflection-based logic), you may need to add those classes to the reflection configuration.
-
-### How to Handle Custom Application Behavior
-
-If you find that your native binary fails at runtime with a `ClassNotFoundException` or `NoSuchMethodException` related to your own code or your dependencies, follow these steps:
-
-1.  **Identify the Class**: Look at the stack trace to find the class that failed to load.
-2.  **Update `build_native.sh`**: Add the class name to the `ALL_CLASSES_WITH_RUNTIME` list in the `jakarta_apis/build_native.sh` script.
-    ```bash
-    # Example: Adding a custom model class or a library-specific adapter
-    ALL_CLASSES_WITH_RUNTIME="$ALL_CLASSES com.example.MyModel com.thirdparty.Adapter"
-    ```
-3.  **Rebuild**: Run the `mvn install -Pnative` command again. The script will automatically update the `reflect-config.json` and rebuild the binary.
-
-### Using the Build-Time Initialization
-
-If you encounter an `UnsupportedFeatureException` during compilation (similar to the SLF4J errors we resolved), you can add the class to the `--initialize-at-build-time` list in `build_native.sh`. This is typically needed for classes that initialize static state that GraalVM needs to capture at build time.
-
----
-
-## High-Level Compiler Configuration
-
-The GraalVM native image configuration is designed to bridge the gap between a dynamic web container and a static native binary.
-
-### Compilation Strategy (`native-image`)
-
-The compilation process is configured to be **strictly non-fallback** (`--no-fallback`), ensuring the resulting binary is a true standalone executable. The strategy focuses on:
-
-1.  **Selective Build-Time Initialization**: Several core logging and utility classes (specifically from SLF4J like `LoggerFactory`, `NOPMDCAdapter`, and `BasicMDCAdapter`) are initialized at **build time**. This embeds their pre-computed state into the binary, which is essential for performance and avoiding complex runtime class-loading issues.
-2.  **Dynamic Reflection Mapping**: Since web containers like Jetty rely heavily on reflection to instantiate servlets and filters, the compiler is provided with a dynamically generated `reflect-config.json`. This "map" tells the compiler exactly which classes must be kept and remain reflectively accessible, even if they aren't explicitly referenced in the code's static call tree.
-3.  **Refined Runtime Classpath**: The compiler uses a minimalist runtime assembly. By unpacking the full App Engine `runtime-deployment` and discarding everything except the three essential jars (`runtime-main`, `runtime-impl-jetty121`, and `runtime-shared-jetty121-ee11`), we reduce the "noise" and analysis time for the GraalVM compiler.
-
-### Important Classes
-
-The successful execution of the native binary depends on the inclusion and proper configuration of several critical classes:
-
-*   **Entry Point (`JavaRuntimeMainWithDefaults`)**: This is the heart of the executable. It's responsible for parsing environment variables (like `PORT` and `GAE_PARTITION`) and bootstrapping the App Engine environment with sensible production defaults.
-*   **Runtime Factories**:
-    *   **`JavaRuntimeFactory`**: The core factory that the entry point uses to instantiate the App Engine runtime environment.
-    *   **`JettyServletEngineAdapter`**: The specific adapter that hooks the App Engine runtime into the Jetty 12.1 engine. Both of these are loaded via reflection, making their presence in the `reflect-config.json` mandatory.
-*   **Web Components (The "Dynamic" Set)**:
-    *   **Servlets**: Application-specific classes like `GuestbookServlet` and `SignGuestbookServlet`.
-    *   **Initializers**: Container-level classes like `JettyJasperInitializer` (for JSP support) and `TldScanner`.
-    *   **Generated JSP Classes**: Classes like `org.apache.jsp.guestbook_jsp` that are generated by the Jetty Quickstart generator during the staging phase.
+The App Engine runtime itself is now fully configured. Any remaining tasks are **web application specific**. If your app uses additional libraries (like Hibernate or Jackson), you may need to add those classes to the reflection configuration in `build_native.sh`.
