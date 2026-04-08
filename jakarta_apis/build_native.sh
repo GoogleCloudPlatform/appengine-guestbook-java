@@ -253,6 +253,10 @@ if [ -f "$APP_YAML" ]; then
     # Copy binary to staging dir so it can be deployed
     cp "target/$IMAGE_NAME" "$STAGING_DIR/"
     
+    # Also copy the 3 essential runtime jars to the staging root as requested
+    echo "Copying runtime jars to staging root..."
+    cp "$MAIN_JAR" "$JETTY_IMPL_JAR" "$JETTY_SHARED_JAR" "$STAGING_DIR/"
+    
     # Replace or add entrypoint
     # Note: We use the production trusted_host here
     ENTRYPOINT="./$IMAGE_NAME --jetty_http_port=8080 --trusted_host=appengine.googleapis.internal:10001 --fixed_application_path=."
