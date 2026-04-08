@@ -6,12 +6,19 @@ steps:
       - '-c'
       - |
         microdnf install -y curl tar gzip python3
-        # In Oracle Linux, we might need a manual symlink
-        [ ! -e /usr/bin/python ] && ln -s /usr/bin/python3 /usr/bin/python
-        echo "Diagnostic: python3 location: $$(which python3)"
-        echo "Diagnostic: python location: $$(which python)"
         python3 --version
-        python --version
+        # The walrus operator (:=) requires Python 3.8+. 
+        # If the default is too old, we try to install a specific version if available.
+        microdnf install -y python3.11 || microdnf install -y python3.9 || echo "Targeted python3 versions not found in microdnf"
+        
+        # Ensure we use the best available python3
+        export CLOUDSDK_PYTHON=$$(which python3.11 2>/dev/null || which python3.9 2>/dev/null || which python3 2>/dev/null)
+        echo "Using CLOUDSDK_PYTHON: $$CLOUDSDK_PYTHON"
+        $$CLOUDSDK_PYTHON --version
+        
+        # Create a symlink for generic 'python' to the selected version
+        ln -sf $$CLOUDSDK_PYTHON /usr/bin/python
+        
         curl -L https://download.oracle.com/graalvm/25/latest/graalvm-jdk-25_linux-x64_bin.tar.gz -o graalvm.tar.gz
         mkdir -p /opt/graalvm
         tar -xzf graalvm.tar.gz -C /opt/graalvm --strip-components=1
