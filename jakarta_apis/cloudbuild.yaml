@@ -1,32 +1,20 @@
 steps:
-  # 1. Install GraalVM and Maven, then build and stage
-  - name: 'gcr.io/cloud-builders/mvn'
+  # 1. Install GraalVM, Maven and Python 3.10+ on Ubuntu
+  - name: 'ubuntu'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
-        microdnf install -y curl tar gzip python3
-        python3 --version
-        # The walrus operator (:=) requires Python 3.8+. 
-        # If the default is too old, we try to install a specific version if available.
-        microdnf install -y python3.11 || microdnf install -y python3.9 || echo "Targeted python3 versions not found in microdnf"
-        
-        # Ensure we use the best available python3
-        export CLOUDSDK_PYTHON=$$(which python3.11 2>/dev/null || which python3.9 2>/dev/null || which python3 2>/dev/null)
-        echo "Using CLOUDSDK_PYTHON: $$CLOUDSDK_PYTHON"
-        $$CLOUDSDK_PYTHON --version
-        
-        # Create a symlink for generic 'python' to the selected version
-        ln -sf $$CLOUDSDK_PYTHON /usr/bin/python
-        
+        apt-get update && apt-get install -y curl tar gzip python3 maven
+        echo "Using Python version: $$(python3 --version)"
         curl -L https://download.oracle.com/graalvm/25/latest/graalvm-jdk-25_linux-x64_bin.tar.gz -o graalvm.tar.gz
         mkdir -p /opt/graalvm
         tar -xzf graalvm.tar.gz -C /opt/graalvm --strip-components=1
         export JAVA_HOME=/opt/graalvm
         export PATH=$$JAVA_HOME/bin:$$PATH
-        export CLOUDSDK_PYTHON=$$(which python3)
+        export CLOUDSDK_PYTHON=/usr/bin/python3
         
-        # Build, Stage, and Run our Native Build script (which handles reflection, resources, and app.yaml)
+        # Build, Stage, and Run our Native Build script
         mvn clean package appengine:stage install -Pnative -DskipTests
 
   # 2. Deploy to App Engine using parameters parsed from pom.xml
