@@ -5,7 +5,7 @@ steps:
     args:
       - '-c'
       - |
-        apt-get update && apt-get install -y curl tar gzip python3 maven
+        apt-get update && apt-get install -y curl tar gzip python3 maven build-essential libz-dev zlib1g-dev
         echo "Using Python version: $$(python3 --version)"
         curl -L https://download.oracle.com/graalvm/25/latest/graalvm-jdk-25_linux-x64_bin.tar.gz -o graalvm.tar.gz
         mkdir -p /opt/graalvm
