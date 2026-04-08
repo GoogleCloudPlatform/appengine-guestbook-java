@@ -29,4 +29,4 @@ steps:
 
 timeout: '2400s'
 options:
-  machineType: 'E2_HIGHCPU_8' # Native image builds need more CPU/RAM
+  machineType: 'E2_HIGHCPU_32' # Native image builds need significant RAM/CPU
