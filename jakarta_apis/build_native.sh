@@ -71,14 +71,10 @@ echo "=== 2. Generating $REFLECT_CONFIG ==="
 echo "[" > "$REFLECT_CONFIG"
 FIRST=true
 
-# Dynamically discover all classes in the essential jars
-# This ensures that both com.google.apphosting.runtime and any internal Jetty classes
-# used by the adapter are properly registered for reflection.
-# We filter out specific classes that are not used in EE11 and cause warnings due to missing legacy dependencies.
+# Dynamically discover all classes in the essential jars and the application itself
 RUNTIME_CLASSES=""
-for JAR in "$MAIN_JAR_PATH" "$JETTY_IMPL_JAR_PATH" "$JETTY_SHARED_JAR_PATH" "$SDK_JAR_PATH"; do
+for JAR in "$MAIN_JAR_PATH" "$JETTY_IMPL_JAR_PATH" "$JETTY_SHARED_JAR_PATH" $(find "$STAGING_DIR/WEB-INF/lib" -name "*.jar" 2>/dev/null); do
   [ -z "$JAR" ] && continue
-  # Strip leading slash if present, remove .class extension, and convert / to .
   JAR_CLASSES=$(jar tf "$JAR" | grep "\.class$" | sed 's/^\///;s/\.class$//;s/\//./g' | \
     grep -v "\.ee8\." | \
     grep -v "javax\.servlet\." | \
@@ -87,6 +83,11 @@ for JAR in "$MAIN_JAR_PATH" "$JETTY_IMPL_JAR_PATH" "$JETTY_SHARED_JAR_PATH" "$SD
     grep -v "com\.google\.apphosting\.utils\.servlet\.JdbcMySqlConnectionCleanupFilter" || true)
   RUNTIME_CLASSES="$RUNTIME_CLASSES\n$JAR_CLASSES"
 done
+
+if [ -d "$STAGING_DIR/WEB-INF/classes" ]; then
+  APP_CLASSES=$(find "$STAGING_DIR/WEB-INF/classes" -name "*.class" | sed "s|$STAGING_DIR/WEB-INF/classes/||;s/^\///;s/\.class$//;s/\//./g")
+  RUNTIME_CLASSES="$RUNTIME_CLASSES\n$APP_CLASSES"
+fi
 RUNTIME_CLASSES=$(echo -e "$RUNTIME_CLASSES" | sort -u)
 
 # Combine discovered classes with those from quickstart-web.xml
@@ -140,7 +141,7 @@ echo "=== 4. Building Native Image ==="
 RESOURCE_CONFIG="resource-config.json"
 echo '{"resources":{"includes":[' > "$RESOURCE_CONFIG"
 FIRST_RES=true
-for JAR in "$MAIN_JAR_PATH" "$JETTY_IMPL_JAR_PATH" "$JETTY_SHARED_JAR_PATH" "$SDK_JAR_PATH"; do
+for JAR in "$MAIN_JAR_PATH" "$JETTY_IMPL_JAR_PATH" "$JETTY_SHARED_JAR_PATH" $(find "$STAGING_DIR/WEB-INF/lib" -name "*.jar" 2>/dev/null); do
   [ -z "$JAR" ] && continue
   JAR_RESOURCES=$(jar tf "$JAR" | grep -E "\.(xml|properties|dtd|xsd|txt)$" || true)
   for RES in $JAR_RESOURCES; do
@@ -156,28 +157,49 @@ for JAR in "$MAIN_JAR_PATH" "$JETTY_IMPL_JAR_PATH" "$JETTY_SHARED_JAR_PATH" "$SD
     echo ",{\"pattern\":\"/$CLEAN_RES\"}" >> "$RESOURCE_CONFIG"
   done
 done
+
+# Also scan the classes directory for resources
+if [ -d "$STAGING_DIR/WEB-INF/classes" ]; then
+  APP_RESOURCES=$(find "$STAGING_DIR/WEB-INF/classes" -type f | grep -E "\.(xml|properties|dtd|xsd|txt)$" | sed "s|$STAGING_DIR/WEB-INF/classes/||;s/^\///" || true)
+  for RES in $APP_RESOURCES; do
+    [ -z "$RES" ] && continue
+    if [ "$FIRST_RES" = true ]; then
+      FIRST_RES=false
+    else
+      echo "," >> "$RESOURCE_CONFIG"
+    fi
+    echo "{\"pattern\":\"$RES\"}" >> "$RESOURCE_CONFIG"
+    echo ",{\"pattern\":\"/$RES\"}" >> "$RESOURCE_CONFIG"
+  done
+fi
 echo ']}}' >> "$RESOURCE_CONFIG"
 
+# G1GC is only supported on Linux for GraalVM
+GC_ARGS=""
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    echo "Enabling G1GC for Linux build..."
+    GC_ARGS="--gc=G1"
+else
+    echo "Skipping G1GC (not supported on $OSTYPE), using default serial GC."
+fi
 native-image --no-fallback \
   -cp "$CP" \
   -H:Name="$IMAGE_NAME" \
   -H:ReflectionConfigurationFiles="$REFLECT_CONFIG" \
   -H:ResourceConfigurationFiles="$RESOURCE_CONFIG" \
   --initialize-at-build-time=org.slf4j \
-  --initialize-at-build-time=org.eclipse.jetty \
-  --initialize-at-build-time=com.google.apphosting \
-  --initialize-at-build-time=com.google.appengine \
-  --initialize-at-build-time=org.glassfish \
-  --initialize-at-build-time=com.google.common \
-  --initialize-at-run-time=com.google.apphosting.runtime.RequestManager\$ThreadStop0Holder \
-  --initialize-at-run-time=com.google.appengine.repackaged \
-  --initialize-at-run-time=com.google.api \
-  --initialize-at-run-time=com.google.api.client.http.HttpTransport \
-  --gc=G1 \
+  --initialize-at-build-time=sun.net.www.protocol.https.Handler \
+  --initialize-at-build-time=sun.net.www.protocol.http.Handler \
+  --initialize-at-run-time=com.google \
+  --initialize-at-run-time=org.eclipse.jetty \
+  --initialize-at-run-time=org.glassfish \
+  --initialize-at-run-time=jakarta.servlet \
+  $GC_ARGS \
   -H:+ReportExceptionStackTraces \
   --enable-url-protocols=http,https \
   -Djava.awt.headless=true \
   com.google.apphosting.runtime.JavaRuntimeMainWithDefaults
+
 
 echo "=== 5. Testing Native Binary ==="
 # We run the binary with GAE_PARTITION=dev only for this local verification step.
@@ -244,10 +266,16 @@ if [ -f "$APP_YAML" ]; then
 fi
 
 echo "=== 7. Parsing deployment parameters from pom.xml ==="
-# Extract projectId, version, and promote from pom.xml
-PROJECT_ID=$(perl -ne 'print $1 if /<projectId>(.*?)<\/projectId>/' pom.xml || echo "")
-VERSION_ID=$(perl -ne 'print $1 if /<version>(.*?)<\/version>/' pom.xml | head -n 2 | tail -n 1 || echo "")
-PROMOTE=$(perl -ne 'print $1 if /<promote>(.*?)<\/promote>/' pom.xml || echo "false")
+# Extract projectId, version, and promote specifically from the appengine-maven-plugin configuration
+# to avoid picking up unrelated version tags.
+PROJECT_ID=$(perl -ne 'if (/<artifactId>appengine-maven-plugin<\/artifactId>/.../<\/configuration>/) { print $1 if /<projectId>(.*?)<\/projectId>/ }' pom.xml | head -n 1 || echo "")
+VERSION_ID=$(perl -ne 'if (/<configuration>/.../<\/configuration>/) { print $1 if /<version>(.*?)<\/version>/ }' pom.xml | head -n 1 || echo "")
+PROMOTE=$(perl -ne 'if (/<artifactId>appengine-maven-plugin<\/artifactId>/.../<\/configuration>/) { print $1 if /<promote>(.*?)<\/promote>/ }' pom.xml | head -n 1 || echo "false")
+
+# Fallback: if version is empty, try to get the project version (though App Engine version is preferred)
+if [ -z "$VERSION_ID" ]; then
+    VERSION_ID=$(perl -ne 'print $1 if /<version>(.*?)<\/version>/' pom.xml | head -n 1 | sed 's/\./-/g' | tr '[:upper:]' '[:lower:]')
+fi
 
 # Map promote boolean to gcloud flags
 PROMOTE_FLAG="--no-promote"

@@ -82,12 +82,14 @@ Cloud Build will automatically:
 1. **Staging**: The `appengine:stage` command generates `target/appengine-staging/WEB-INF/quickstart-web.xml`. This file contains a pre-scanned list of all servlets, initializers, and JSP classes.
 2. **Deep Reflection Discovery**: `build_native.sh` uses a multi-layered discovery process to build the `reflect-config.json`:
    - **Deep XML Parsing**: Uses `perl` to extract not just main classes, but also classes hidden in `interested`, `applicable`, and `annotated` arrays within the Jetty `ContainerInitializers`.
-   - **Full Runtime & SDK Discovery**: Automatically extracts **every class** from the three essential runtime jars AND the user-facing `appengine-api-1.0-sdk` jar.
+   - **Full Application Discovery**: Automatically extracts **every class** from the essential runtime jars, the App Engine SDK, and **all application dependency jars and classes** in the staging directory.
    - **Legacy Filtering**: Automatically filters out classes related to `.ee8.` and `javax.servlet.` namespaces, as well as specific legacy utility classes.
    - **Full Access Registration**: All discovered classes are registered with `allDeclaredConstructors`, `allDeclaredMethods`, and `allDeclaredFields` set to `true`.
-3. **Resource Discovery**: Automatically scans the jars for all `.xml`, `.properties`, `.dtd`, `.xsd`, and `.txt` files. These are registered in `resource-config.json` to ensure configuration like `catalog-ee11.xml` is available inside the binary.
+3. **Resource Discovery**: Automatically scans all jars and class directories for `.xml`, `.properties`, `.dtd`, `.xsd`, and `.txt` files. Each resource is registered with and without a leading slash to ensure compatibility with various resource loading mechanisms.
 4. **Runtime Assembly**: The script unpacks the `runtime-deployment` zip and keeps only the **3 essential jars**: `runtime-main.jar`, `runtime-impl-jetty121.jar`, and `runtime-shared-jetty121-ee11.jar`.
-5. **Native Compilation**: GraalVM's `native-image` compiles the application using `com.google.apphosting.runtime.JavaRuntimeMainWithDefaults` as the entry point. It includes **G1GC** (`--gc=G1`) and broad build-time initialization for `org.slf4j`, `org.eclipse.jetty`, and App Engine packages.
+5. **Hybrid Initialization**: GraalVM's `native-image` uses a targeted strategy:
+   - **Build-Time**: Core utilities (`org.slf4j`), networking metadata (`sun.net`), Jetty, and Protobuf descriptors are frozen for maximum performance.
+   - **Run-Time**: Complex dynamic middleware (problematic Protobuf descriptors, App Engine Search/Datastore API internals, and thread management) are deferred to ensure correctness.
 6. **Verification**: The script automatically starts the binary with `GAE_PARTITION=dev` and verifies that it reaches the "JavaRuntime starting..." state without fatal errors.
 7. **Deployment Preparation**: The script parses `pom.xml` to extract deployment settings and generates a `target/appengine-staging/deploy.sh` script. It also injects the native entrypoint into the staged `app.yaml`.
 

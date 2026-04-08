@@ -22,3 +22,4 @@ test-output
 /jakarta_apis/appengine-native-image
 /jakarta_apis/classes.txt
 /jakarta_apis/all_runtime_classes.txt
+/jakarta_apis/runtime.log
