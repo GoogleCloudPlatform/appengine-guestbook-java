@@ -5,7 +5,9 @@ steps:
     args:
       - '-c'
       - |
-        apt-get update && apt-get install -y curl tar gzip python3 python-is-python3
+        microdnf install -y curl tar gzip python3
+        # In Oracle Linux, we might need a manual symlink
+        [ ! -e /usr/bin/python ] && ln -s /usr/bin/python3 /usr/bin/python
         echo "Diagnostic: python3 location: $$(which python3)"
         echo "Diagnostic: python location: $$(which python)"
         python3 --version
