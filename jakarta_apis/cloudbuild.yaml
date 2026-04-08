@@ -5,7 +5,9 @@ steps:
     args:
       - '-c'
       - |
-        apt-get update && apt-get install -y curl tar gzip
+        apt-get update && apt-get install -y curl tar gzip python3
+        # Create a symlink for python if it doesn't exist (SDK installer needs it)
+        ln -s /usr/bin/python3 /usr/bin/python
         curl -L https://download.oracle.com/graalvm/25/latest/graalvm-jdk-25_linux-x64_bin.tar.gz -o graalvm.tar.gz
         mkdir -p /opt/graalvm
         tar -xzf graalvm.tar.gz -C /opt/graalvm --strip-components=1
