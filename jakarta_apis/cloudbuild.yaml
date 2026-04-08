@@ -11,6 +11,7 @@ steps:
         tar -xzf graalvm.tar.gz -C /opt/graalvm --strip-components=1
         export JAVA_HOME=/opt/graalvm
         export PATH=$$JAVA_HOME/bin:$$PATH
+        export CLOUDSDK_PYTHON=/usr/bin/python3
         
         # Build, Stage, and Run our Native Build script (which handles reflection, resources, and app.yaml)
         mvn clean package appengine:stage install -Pnative -DskipTests
