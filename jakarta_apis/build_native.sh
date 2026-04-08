@@ -196,7 +196,7 @@ native-image --no-fallback \
   --initialize-at-run-time=jakarta.servlet \
   $GC_ARGS \
   -H:+ReportExceptionStackTraces \
-  --enable-url-protocols=http,https \
+  --enable-url-protocols=http,https,jar \
   -Djava.awt.headless=true \
   com.google.apphosting.runtime.JavaRuntimeMainWithDefaults
 
@@ -213,7 +213,19 @@ SUCCESS=false
 for i in {1..60}; do
   if grep -q "INFO: JavaRuntime starting..." runtime.log; then
     echo "Successfully detected start log!"
-    SUCCESS=true
+    
+    # Give it a few more seconds to fully bind and start the context
+    sleep 5
+    
+    echo "=== 5b. Performing Functional Test (curl localhost:8080/view) ==="
+    if curl -s -f http://localhost:8080/view > /dev/null; then
+        echo "Functional test PASSED: http://localhost:8080/view responded successfully!"
+        SUCCESS=true
+    else
+        echo "Functional test FAILED: http://localhost:8080/view returned an error."
+        # Don't exit immediately, let's see the logs
+        cat runtime.log
+    fi
     break
   fi
   # Check for fatal errors
