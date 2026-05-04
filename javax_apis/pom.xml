@@ -109,8 +109,9 @@
                     <promote>false</promote>
                     <automaticRestart>true</automaticRestart>
                     <jvmFlags>
+                        <jvmFlag>-Dappengine.fullscan.seconds=2</jvmFlag>
                         <jvmFlag>-Xdebug</jvmFlag>
-                        <jvmFlag>-agentlib:jdwp=transport=dt_socket,address=8000,server=y,suspend=n</jvmFlag>
+                        <jvmFlag>-agentlib:jdwp=transport=dt_socket,address=8000,server=y,suspend=n</jvmFlag>                     
                     </jvmFlags>
                 </configuration>
             </plugin>
